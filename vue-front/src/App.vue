@@ -10,16 +10,18 @@
     </el-table>
     <el-divider><i class="el-icon-mobile-phone"></i></el-divider>
       <el-container>
-          <el-aside width="200px" style="background-color: rgb(238, 241, 246)">
-            <el-menu router mode="horizontal" background-color="#545c64" text-color="#fff" active-text-color="#ffd04b" :default-openeds="['1']">
+          <el-aside background-color="#333399" width="200px">
+            <el-menu router mode="horizontal" background-color="#333399" text-color="#fff" active-text-color="#f6941d" :default-openeds="['1']">
               <el-submenu>
                 <template slot="title"><i class="el-icon-s-tools"></i>功能</template>
                   <el-menu-item index="Layout">重构功能</el-menu-item>
-                  <el-menu-item index="HelloWorld">图片测试</el-menu-item>
+                  <el-menu-item index="ShowPic">图片测试</el-menu-item>
               </el-submenu>
             </el-menu>
           </el-aside>
-        <router-view/>
+        <transition :name="transitionName">
+          <router-view></router-view>
+        </transition>
       </el-container>
   </div>
 </template>
@@ -31,7 +33,19 @@ export default {
   name: 'App',
   data () {
     return {
-      tableData: [{}]
+      tableData: [{}],
+      transitionName: ''
+    }
+  },
+  watch: {// 使用watch 监听$router的变化
+    $route (to, from) {
+      // 如果to索引大于from索引,判断为前进状态,反之则为后退状态
+      if (to.meta.index > from.meta.index) {
+        // 设置动画名称
+        this.transitionName = 'slide-left'
+      } else {
+        this.transitionName = 'slide-right'
+      }
     }
   }
 }
@@ -43,7 +57,31 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  color: #2c3e50;
+  color: #398fe6;
   margin-top: 60px;
+}
+.slide-right-enter-active,
+.slide-right-leave-active,
+.slide-left-enter-active,
+.slide-left-leave-active {
+  will-change: transform;
+  transition: all 200ms;
+  position: relative;
+}
+.slide-right-enter {
+  opacity: 0;
+  transform: translate3d(0, 100%, 0);
+}
+.slide-right-leave-active {
+  opacity: 0;
+  transform: translate3d(0, -100%, 0);
+}
+.slide-left-enter {
+  opacity: 0;
+  transform: translate3d(0, -100%, 0);
+}
+.slide-left-leave-active {
+  opacity: 0;
+  transform: translate3d(0, 100%, 0);
 }
 </style>

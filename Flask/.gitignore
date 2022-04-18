@@ -2,3 +2,4 @@
 .static/*
 __pycache__
 *.bin
+*.bmp

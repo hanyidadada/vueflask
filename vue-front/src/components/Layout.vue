@@ -1,6 +1,6 @@
 <template>
   <div class="LayOut">
-    <el-main>
+    <el-main class="mainR">
         <el-form :inline="true" class="demo-form-inline">
             <el-form-item label="核号">
                 <el-select v-model="corenum" placeholder="请选择核号">
@@ -47,27 +47,42 @@
             </el-upload>
         </el-form>
         <!-- <el-button type="primary" @click="sendArgs">主要按钮</el-button> -->
-        <!-- <el-form :inline="true" class="status-form" > -->
-            <el-table
-              :data="tableData"
-              style="width: 100%"
-              :row-class-name="tableRowClassName">
-              <el-table-column
-                prop="num"
-                label="核号"
-                width="180">
-              </el-table-column>
-              <el-table-column
-                prop="state"
-                label="状态"
-                width="180">
-              </el-table-column>
-              <el-table-column
-                prop="binname"
-                label="执行镜像">
-              </el-table-column>
-            </el-table>
-        <!-- </el-form> -->
+          <el-table
+            border
+            :data="tableData"
+            style="width: 100%"
+            v-loading="loading"
+            element-loading-text="拼命加载中"
+            element-loading-spinner="el-icon-loading"
+            element-loading-background="rgba(0, 0, 0, 0.8)"
+            :row-class-name="tableRowClassName">
+            <el-table-column
+              prop="num"
+              label="核号"
+              width="180"
+              sortable>
+            </el-table-column>
+            <el-table-column
+              prop="state"
+              label="状态"
+              width="180"
+              align="center"
+              sortable
+              :filters="[{ text: '运行中', value: 'running' }, { text: '停止', value: 'stopped' }]"
+              :filter-method="filterTag">
+              <template slot-scope="scope">
+                <el-tag
+                  :type="scope.row.state === 'running' ? 'success' : 'danger'"
+                  disable-transitions>{{scope.row.state}}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="task"
+              label="执行镜像"
+              align="center"
+              sortable>
+            </el-table-column>
+          </el-table>
     </el-main>
   </div>
 </template>
@@ -82,47 +97,16 @@ export default {
       WriteAddr: '',
       EntryAddr: '',
       fileList: [],
-      tableData: [{
-        num: '0',
-        state: 'running',
-        binname: 'Control Core'
-      },
-      {
-        num: '1',
-        state: 'stopped',
-        binname: ''
-      },
-      {
-        num: '2',
-        state: 'stopped',
-        binname: ''
-      },
-      {
-        num: '3',
-        state: 'stopped',
-        binname: ''
-      },
-      {
-        num: '4',
-        state: 'stopped',
-        binname: ''
-      },
-      {
-        num: '5',
-        state: 'stopped',
-        binname: ''
-      },
-      {
-        num: '6',
-        state: 'stopped',
-        binname: ''
-      },
-      {
-        num: '7',
-        state: 'stopped',
-        binname: ''
-      }]
+      tableData: [{}],
+      loading: true
     }
+  },
+  created: function () {
+    this.loading = true
+    this.getTableData()
+    setTimeout(() => {
+      this.loading = false
+    }, 1000)
   },
   methods: {
     sendArgs: function () {
@@ -147,6 +131,9 @@ export default {
     beforeRemove (file) {
       return this.$confirm(`确定移除 ${file.name}？`)
     },
+    filterTag (value, row) {
+      return row.state === value
+    },
     submitUpload (file) {
       var formdata = new FormData()
       this.fileList.forEach((val, index) => {
@@ -160,9 +147,7 @@ export default {
       }
       axios.post('http://127.0.0.1:5000/upload', formdata, config).then(response => {
         this.$message(response.data.msg)
-        var index = parseInt(this.corenum)
-        this.tableData[index].state = 'running'
-        this.tableData[index].binname = formdata.get('file').name
+        this.getTableData()
       }).catch(error => {
         if (error.response.status === 400) {
           this.$message.error('参数错误！请检查参数！')
@@ -179,6 +164,19 @@ export default {
         return 'success-row'
       }
       return ''
+    },
+    getTableData: function () {
+      var that = this
+      const path = 'http://127.0.0.1:5000/getTable'
+      axios.get(path).then(response => {
+        that.tableData = response.data.table
+        that.loading = true
+        setTimeout(() => {
+          that.loading = false
+        }, 1000)
+      }).catch(function (error) {
+        that.$message(error)
+      })
     }
   }
 }
@@ -186,11 +184,16 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.mainR {
+  position: relative;
+  left: 50px;
+  top: 10px;
+}
 .el-table>>>.warning-row {
-  background: rgb(22, 133, 217)
+  background: #909399
 }
 
 .el-table>>>.success-row {
-  background: #0ce1da
+  background: #61b338
 }
 </style>
