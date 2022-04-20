@@ -41,8 +41,13 @@ export default {
         that.imgCode =
           'data:image/bmp;base64,' + that.arrayBufferToBase64(response.data)
         that.$message('查询成功')
-      }).catch(function (error) {
-        that.$message(error)
+      }).catch(error => {
+        if (error.response.status === 400) {
+          this.$message.error('参数错误！请检查参数！')
+        }
+        if (error.response.status === 500) {
+          this.$message.error('图像正在处理请稍后！')
+        }
       })
     },
     arrayBufferToBase64 (buffer) {

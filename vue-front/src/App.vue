@@ -1,8 +1,8 @@
 <template>
   <div id="app" style="width: 100%;margin-top:0px;">
-    <el-table :show-header="false" :data="tableData" >
+    <el-table :show-header="false" :data="tableData" :row-class-name="tableClass">
       <el-table-column align="left">
-        <el-image :src="require('./assets/csu18.png')"/>
+        <el-image :src="require('./assets/uestc.png')"/>
       </el-table-column>
       <el-table-column align="center">
         <el-image :src="require('./assets/header.png')"/>
@@ -47,6 +47,11 @@ export default {
         this.transitionName = 'slide-right'
       }
     }
+  },
+  methods: {
+    tableClass () {
+      return 'success-row'
+    }
   }
 }
 </script>
@@ -83,5 +88,8 @@ export default {
 .slide-left-leave-active {
   opacity: 0;
   transform: translate3d(0, 100%, 0);
+}
+.el-table .success-row {
+  background: #333399;
 }
 </style>

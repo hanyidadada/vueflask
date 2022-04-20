@@ -1,6 +1,8 @@
+from ast import Return
 from http import client, server
 import io
 import os
+from tkinter import image_names
 from PIL import Image
 from flask import Flask, request, jsonify, abort
 from werkzeug.utils import secure_filename
@@ -51,14 +53,49 @@ def refactor(corenum, EntryAddr, WriteAddr, file):
     server_ip = '10.2.25.123'
     server_port = 1001
     client_socket.connect((server_ip,server_port))
-    data = struct.pack("!8s8ss", EntryAddr.encode('utf-8'), WriteAddr.encode('utf-8'), corenum.encode('utf-8'))
+    byte = chr(0x01)
+    data = struct.pack("!s8s8ss", byte.encode(), EntryAddr.encode('utf-8'), WriteAddr.encode('utf-8'), corenum.encode('utf-8'))
     client_socket.send(data)
     for line in file:
         client_socket.send(line)
-    status[int(corenum)]['state'] = 'running'
-    status[int(corenum)]['task'] = file.filename.split('.')[0]
-    print(status[int(corenum)]['state'])
-    print(status[int(corenum)]['task'])
+    client_socket.close()
+
+def resetcore(corenum):
+    client_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    server_ip = '10.2.25.123'
+    server_port = 1001
+    client_socket.connect((server_ip,server_port))
+    byte = chr(0x03)
+    data = struct.pack("!ss", byte.encode(), corenum.encode('utf-8'))
+    client_socket.send(data)
+
+    client_socket.close()
+
+ImageName = '/bmp/result'
+id = 1
+def getImage(): 
+    global id
+    client_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    server_ip = '10.2.25.123'
+    server_port = 1001
+    client_socket.connect((server_ip,server_port))
+    byte = chr(0x02)
+    data = struct.pack("!s", byte.encode())
+    client_socket.send(data)
+    recv_data = client_socket.recv(4)  # 此处与udp不同，客户端已经知道消息来自哪台服务器，不需要用recvfrom了
+    if recv_data != "succ".encode():
+        print("查询失败!")
+        client_socket.close()
+        abort(500)
+    recvd_size = 0  # 定义已接收文件的大小
+    fp = open(basedir + ImageName + str(id) + '.bmp', 'wb')
+    print('start receiving...')
+    filesize = 173878
+    while not recvd_size == filesize:
+        data = client_socket.recv(17838)
+        recvd_size += len(data)
+        fp.write(data)
+    fp.close()
     client_socket.close()
 
 def checkArgs(corenum, EntryAddr, WriteAddr, file):
@@ -66,6 +103,8 @@ def checkArgs(corenum, EntryAddr, WriteAddr, file):
         return 0
     if len(corenum) != 1 or len(EntryAddr) != 8 or len(WriteAddr) != 8:
         return 0
+    if EntryAddr == '00000000':
+        return 3
     if file.filename.endswith(".bin") == False:
         return 1
     return 2
@@ -94,11 +133,18 @@ def upload_file():
         abort(400)
     if ret == 1:
         abort(500)
-    # refactor(corenum, EntryAddr, WriteAddr, f)
+    if ret == 3:
+        resetcore(corenum)
+        status[int(corenum)]['state'] = 'stopped'
+        status[int(corenum)]['task'] = ''
+        data={'msg': 'reset succ'}
+        return jsonify(data)
+    refactor(corenum, EntryAddr, WriteAddr, f)
     status[int(corenum)]['state'] = 'running'
     status[int(corenum)]['task'] = f.filename.split('.')[0]
-    f.save(basedir + '/' + secure_filename(f.filename))
-    place = basedir + '/' + secure_filename(f.filename)
+    f.seek(0, 0)
+    f.save(basedir + '/bin/' + secure_filename(f.filename))
+    place = basedir + '/bin/' + secure_filename(f.filename)
     data={'msg': 'refactor success, bin file at ' + place}
     return jsonify(data)
 
@@ -113,8 +159,10 @@ def getTable():
         return jsonify(data)
 
 @app.route('/getPic',methods=['GET', 'POST'])
-def findpic():
-    img_url = basedir+'/gray.bmp'
+def getPic():
+    global id
+    f = getImage()
+    img_url = basedir + ImageName + str(id) + '.bmp'
     with open(img_url, 'rb') as f:
         a = f.read()
     img_stream = io.BytesIO(a)
@@ -122,6 +170,7 @@ def findpic():
     imgByteArr = io.BytesIO()
     img.save(imgByteArr, format='BMP')
     imgByteArr = imgByteArr.getvalue()
+    id += 1
     return  imgByteArr
 
 if __name__ == '__main__':
