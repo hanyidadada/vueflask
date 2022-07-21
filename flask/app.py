@@ -14,7 +14,7 @@ app = Flask(__name__)
 cors = CORS(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-status =[{
+status ={'1':[{
         'num': '0',
         'state': 'running',
         'task': 'Control Core'  
@@ -46,27 +46,65 @@ status =[{
         'num': '7',
         'state': 'stopped',
         'task': ''  
-        }]
+        }],
+        '2':[{
+        'num': '0',
+        'state': 'running',
+        'task': 'Control Core'  
+        },{
+        'num': '1',
+        'state': 'stopped',
+        'task': ''  
+        },{
+        'num': '2',
+        'state': 'stopped',
+        'task': ''  
+        },{
+        'num': '3',
+        'state': 'stopped',
+        'task': ''  
+        },{
+        'num': '4',
+        'state': 'stopped',
+        'task': ''  
+        },{
+        'num': '5',
+        'state': 'stopped',
+        'task': ''  
+        },{
+        'num': '6',
+        'state': 'stopped',
+        'task': ''  
+        },{
+        'num': '7',
+        'state': 'stopped',
+        'task': ''  
+        }]}
 
-def refactor(corenum, EntryAddr, WriteAddr, file):
+def mkdir(path):
+	folder = os.path.exists(path)
+	if not folder:                   #判断是否存在文件夹如果不存在则创建为文件夹
+		os.makedirs(path)            #makedirs 创建文件时如果路径不存在会创建这个路径
+
+def refactor(dspnum, corenum, EntryAddr, WriteAddr, file):
     client_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     server_ip = '10.2.25.123'
     server_port = 1001
     client_socket.connect((server_ip,server_port))
     byte = chr(0x01)
-    data = struct.pack("!s8s8ss", byte.encode(), EntryAddr.encode('utf-8'), WriteAddr.encode('utf-8'), corenum.encode('utf-8'))
+    data = struct.pack("!s8s8sss", byte.encode(), EntryAddr.encode('utf-8'), WriteAddr.encode('utf-8'), dspnum.encode('utf-8'), corenum.encode('utf-8'))
     client_socket.send(data)
     for line in file:
         client_socket.send(line)
     client_socket.close()
 
-def resetcore(corenum):
+def resetcore(dspnum, corenum):
     client_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     server_ip = '10.2.25.123'
     server_port = 1001
     client_socket.connect((server_ip,server_port))
     byte = chr(0x03)
-    data = struct.pack("!ss", byte.encode(), corenum.encode('utf-8'))
+    data = struct.pack("!ss", byte.encode(), dspnum.encode('utf-8'), corenum.encode('utf-8'))
     client_socket.send(data)
 
     client_socket.close()
@@ -82,12 +120,13 @@ def getImage():
     byte = chr(0x02)
     data = struct.pack("!s", byte.encode())
     client_socket.send(data)
-    recv_data = client_socket.recv(4)  # 此处与udp不同，客户端已经知道消息来自哪台服务器，不需要用recvfrom了
+    recv_data = client_socket.recv(4)
     if recv_data != "succ".encode():
         print("查询失败!")
         client_socket.close()
         abort(500)
     recvd_size = 0  # 定义已接收文件的大小
+    mkdir("./bmp")
     fp = open(basedir + ImageName + str(id) + '.bmp', 'wb')
     print('start receiving...')
     filesize = 173878
@@ -98,8 +137,8 @@ def getImage():
     fp.close()
     client_socket.close()
 
-def checkArgs(corenum, EntryAddr, WriteAddr, file):
-    if corenum == '' or EntryAddr == '' or WriteAddr == '':
+def checkArgs(dspnum, corenum, EntryAddr, WriteAddr, file):
+    if dspnum == '' or corenum == '' or EntryAddr == '' or WriteAddr == '':
         return 0
     if len(corenum) != 1 or len(EntryAddr) != 8 or len(WriteAddr) != 8:
         return 0
@@ -118,30 +157,31 @@ def home():
         if corenum=='':
             data={'msg': 'Check your args!'}
             return jsonify(data)
-        print(corenum, EntryAddr, WriteAddr)
         data={'msg': 'ok'}
         return jsonify(data)
 
 @app.route("/upload", methods=['GET', 'POST'])
 def upload_file():
     f = request.files.get("file")
+    dspnum=request.form.get('dspnum')
     corenum=request.form.get('corenum')
     EntryAddr=request.form.get('EntryAddr')
     WriteAddr=request.form.get('WriteAddr')
-    ret = checkArgs(corenum, EntryAddr, WriteAddr, f)
+    ret = checkArgs(dspnum, corenum, EntryAddr, WriteAddr, f)
     if ret == 0:
         abort(400)
     if ret == 1:
         abort(500)
     if ret == 3:
-        resetcore(corenum)
-        status[int(corenum)]['state'] = 'stopped'
-        status[int(corenum)]['task'] = ''
+        # resetcore(dspnum, corenum)
+        status[dspnum][int(corenum)]['state'] = 'stopped'
+        status[dspnum][int(corenum)]['task'] = ''
         data={'msg': 'reset succ'}
         return jsonify(data)
-    refactor(corenum, EntryAddr, WriteAddr, f)
-    status[int(corenum)]['state'] = 'running'
-    status[int(corenum)]['task'] = f.filename.split('.')[0]
+    # refactor(dspnum, corenum, EntryAddr, WriteAddr, f)
+    status[dspnum][int(corenum)]['state'] = 'running'
+    status[dspnum][int(corenum)]['task'] = f.filename.split('.')[0]
+    mkdir("./bin")
     f.seek(0, 0)
     f.save(basedir + '/bin/' + secure_filename(f.filename))
     place = basedir + '/bin/' + secure_filename(f.filename)
@@ -155,7 +195,10 @@ def greet (name) :
 @app.route('/getTable', methods=['GET', 'POST'])
 def getTable():
     if request.method=='GET':
-        data={'table': status}
+        dspnum=request.args.get('dspnum')
+        if dspnum == '':
+            dspnum = '1'
+        data={'table': status[dspnum]}
         return jsonify(data)
 
 @app.route('/getPic',methods=['GET', 'POST'])
@@ -172,6 +215,8 @@ def getPic():
     imgByteArr = imgByteArr.getvalue()
     id += 1
     return  imgByteArr
+
+
 
 if __name__ == '__main__':
     # 监听用户请求

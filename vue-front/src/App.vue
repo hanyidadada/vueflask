@@ -2,7 +2,7 @@
   <div id="app" style="width: 100%;margin-top:0px;">
     <el-table :show-header="false" :data="tableData" :row-class-name="tableClass">
       <el-table-column align="left">
-        <el-image :src="require('./assets/uestc.png')"/>
+        <el-image :src="require('./assets/csu18.png')"/>
       </el-table-column>
       <el-table-column align="center">
         <el-image :src="require('./assets/header.png')"/>

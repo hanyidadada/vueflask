@@ -2,6 +2,12 @@
   <div class="LayOut">
     <el-main class="mainR">
         <el-form :inline="true" class="demo-form-inline">
+        <el-form-item label="DSP号">
+                <el-select v-model="dspnum" placeholder="请选择DSP号"  @change="getTableData">
+                    <el-option label="1" value="1"></el-option>
+                    <el-option label="2" value="2"></el-option>
+                </el-select>
+            </el-form-item>
             <el-form-item label="核号">
                 <el-select v-model="corenum" placeholder="请选择核号">
                     <el-option label="1" value="1"></el-option>
@@ -46,7 +52,6 @@
             <div slot="tip" class="el-upload__tip">只能上传bin文件</div>
             </el-upload>
         </el-form>
-        <!-- <el-button type="primary" @click="sendArgs">主要按钮</el-button> -->
           <el-table
             border
             :data="tableData"
@@ -57,30 +62,35 @@
             element-loading-background="rgba(0, 0, 0, 0.8)"
             :row-class-name="tableRowClassName">
             <el-table-column
-              prop="num"
-              label="核号"
-              width="180"
-              sortable>
-            </el-table-column>
-            <el-table-column
-              prop="state"
-              label="状态"
-              width="180"
+              label= "当前选择DSP状态"
               align="center"
-              sortable
-              :filters="[{ text: '运行中', value: 'running' }, { text: '停止', value: 'stopped' }]"
-              :filter-method="filterTag">
-              <template slot-scope="scope">
-                <el-tag
-                  :type="scope.row.state === 'running' ? 'success' : 'danger'"
-                  disable-transitions>{{scope.row.state}}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column
-              prop="task"
-              label="执行镜像"
-              align="center"
-              sortable>
+              >
+              <el-table-column
+                prop="corenum"
+                label="核号"
+                width="180"
+                sortable>
+              </el-table-column>
+              <el-table-column
+                prop="state"
+                label="状态"
+                width="180"
+                align="center"
+                sortable
+                :filters="[{ text: '运行中', value: 'running' }, { text: '停止', value: 'stopped' }]"
+                :filter-method="filterTag">
+                <template slot-scope="scope">
+                  <el-tag
+                    :type="scope.row.state === 'running' ? 'success' : 'danger'"
+                    disable-transitions>{{scope.row.state}}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="task"
+                label="执行镜像"
+                align="center"
+                sortable>
+              </el-table-column>
             </el-table-column>
           </el-table>
     </el-main>
@@ -93,6 +103,7 @@ export default {
   name: 'LayOut',
   data () {
     return {
+      dspnum: '',
       corenum: '',
       WriteAddr: '',
       EntryAddr: '',
@@ -139,6 +150,7 @@ export default {
       this.fileList.forEach((val, index) => {
         formdata.append('file', val.raw)
       })
+      formdata.append('dspnum', this.dspnum)
       formdata.append('corenum', this.corenum)
       formdata.append('WriteAddr', this.WriteAddr)
       formdata.append('EntryAddr', this.EntryAddr)
@@ -168,7 +180,7 @@ export default {
     getTableData: function () {
       var that = this
       const path = 'http://127.0.0.1:5000/getTable'
-      axios.get(path).then(response => {
+      axios.get(path, {params: {dspnum: that.dspnum}}).then(response => {
         that.tableData = response.data.table
         that.loading = true
         setTimeout(() => {

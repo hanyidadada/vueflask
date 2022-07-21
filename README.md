@@ -9,6 +9,8 @@
     pip install flask
     pip install flask_cors
     pip install pillow
+    pip install tk
+    sudo apt install python3-tk
 ### 4.开始运行
     python3 -m flask run
 若本步骤仍然报错，则继续使用pip安装缺少的依赖包
